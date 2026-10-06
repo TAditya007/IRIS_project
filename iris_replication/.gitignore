@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Large artifacts (keep these project data files for figure regeneration)
+# analysis/data/*.npz
+# analysis/data/*.npy
+logs/train_log_*.csv
+logs/train_alg1_log_*.csv
+logs/*_summary.txt
+!logs/PAPER_REPLICATION_FINAL_summary.txt
+checkpoints/*.pt
+!checkpoints/PAPER_REPLICATION_FINAL.pt
+!checkpoints/alg1_ckpt_final_20261006_112335.pt
+
+# Keep the paper and its final artifacts
+!results/REPLICATION_REPORT.md
+!results/table1_reproduced.csv
+!results/figures/*.png
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

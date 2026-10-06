@@ -1,0 +1,578 @@
+﻿\============================================================
+
+iRIS Replication - Complete Setup Guide
+
+\============================================================
+
+Paper: "iRIS: A Deep Policy Learning Framework for Intelligent
+
+Distribution of RIS elements"
+
+Authors: Sudhanshu Arya, Saranya K. Chidambaram, Yogesh K. Choukiker,
+
+Abhijit Bhowmick
+
+Venue:  IEEE Open Journal of the Communications Society (2025)
+
+DOI:    10.1109/OJCOMS.2025.3645828
+
+\============================================================
+
+This document is plain-text / Markdown compatible. If you use a
+
+.txt -> .md converter, headings (#, ##), tables (|), and code fences
+
+(```) will render correctly.
+
+
+\------------------------------------------------------------
+
+0\. PREREQUISITES
+
+\------------------------------------------------------------
+
+Requirement              Minimum                Notes
+
+\-----------------------  ---------------------  --------------------------------------
+
+OS                       Windows 10/11 64-bit   Linux/macOS work with minor tweaks
+
+NVIDIA driver            525.60.13              Older -> torch.cuda.is\_available()=False
+
+Anaconda / Miniconda     any recent             Miniconda recommended (smaller)
+
+VS Code                  any recent             + Python extension + Jupyter extension
+
+Disk space               ~8 GB free             Env ~6 GB + project ~1 GB
+
+GPU                      NVIDIA RTX (any)       Paper used RTX 3080; RTX 4060 verified
+
+Python                   3.10.x                 Required by torch 2.3.1 wheels
+
+Verify NVIDIA driver first. Open Anaconda Prompt or cmd and run:
+
+nvidia-smi
+
+Look at the top-right corner. You must see "CUDA Version: 12.x".
+
+If you see 11.x, or the command is not found, update your driver at:
+
+https://www.nvidia.com/Download/index.aspx
+
+DO NOT install the full CUDA Toolkit. The PyTorch pip wheels bundle
+
+everything needed (cuDNN, cuBLAS, etc.).
+
+
+\------------------------------------------------------------
+
+1. PROJECT LAYOUT
+
+\------------------------------------------------------------
+
+After completing steps 2 and 3, the folder structure will be:
+
+project/
+
+|-- setup/                      <- this folder (GitHub-tracked)
+
+|   |-- create\_project.bat
+
+|   |-- verify\_setup.py
+
+|   |-- verify\_setup.ipynb
+
+|   |-- environment.yml
+
+|   |-- requirements.txt
+
+|   |-- SETUP\_GUIDE.txt         <- you are here
+
+|   `-- README.txt
+
+`-- iris\_replication/           <- created by create\_project.bat
+
+|-- agent/
+
+|   |-- \_\_init\_\_.py
+
+|   |-- dqn.py
+
+|   `-- replay\_buffer.py
+
+|-- analysis/
+
+|   |-- \_\_init\_\_.py
+
+|   |-- fairness.py
+
+|   |-- quantization.py
+
+|   `-- says\_fit.py
+
+|-- checkpoints/
+
+|-- configs/
+
+|   `-- default.yaml
+
+|-- data/
+
+|-- environment/
+
+|   |-- \_\_init\_\_.py
+
+|   |-- allocation.py
+
+|   |-- channel.py
+
+|   |-- quantization.py
+
+|   `-- ris\_env.py
+
+|-- logs/
+
+|-- results/
+
+|   `-- figures/
+
+|-- train.py
+
+|-- evaluate.py
+
+|-- requirements.txt
+
+|-- README.md
+
+|-- commands.txt
+
+|-- timeline.txt
+
+`-- work done.txt
+
+
+\------------------------------------------------------------
+
+1. BUILD THE PROJECT SKELETON
+
+\------------------------------------------------------------
+
+Open a File Explorer window at:
+
+C:\Users\<you>\Documents\year 2\tri sem 4\sp\project
+
+Double-click:
+
+setup\create\_project.bat
+
+Alternatively, from cmd or PowerShell:
+
+cd "C:\Users\<you>\Documents\year 2\tri sem 4\sp\project"
+
+setup\create\_project.bat
+
+The script is IDEMPOTENT. Re-running it will not overwrite any
+
+existing file. It prints [OK] for each new item and [SKIP] for
+
+items that already exist.
+
+Expected output (abridged):
+
+\============================================================
+
+iRIS Replication -- Project Scaffolder
+
+\============================================================
+
+[INFO] Root       : C:\Users\<you>\...\project
+
+[INFO] Project    : C:\Users\<you>\...\project\iris\_replication
+
+[OK]   Created project root.
+
+[OK]   Created folder: configs
+
+[OK]   Created folder: environment
+
+...
+
+[OK]   Created file: train.py
+
+[OK]   Created file: evaluate.py
+
+...
+
+[OK]   Seeded: commands.txt
+
+[OK]   Seeded: timeline.txt
+
+[OK]   Seeded: work done.txt
+
+\============================================================
+
+Project tree (verifying):
+
+\============================================================
+
+... (tree output) ...
+
+[DONE] Project scaffold ready at:
+
+C:\Users\<you>\...\project\iris\_replication
+
+
+\------------------------------------------------------------
+
+1. CREATE THE CONDA ENVIRONMENT
+
+\------------------------------------------------------------
+
+Open "Anaconda Prompt (miniconda3)" from the Start Menu.
+
+Do NOT use the VS Code terminal for this step.
+
+--- 3.1  Remove any previous broken env (safe to run) ---
+
+conda env remove -n iris -y
+
+If the env does not exist you will see:
+
+CondaEnvironmentNotFoundError: Could not find environment: iris
+
+That is fine - continue.
+
+--- 3.2  Create the env with Python 3.10 ---
+
+conda create -n iris python=3.10 -y
+
+Expected tail:
+
+Preparing transaction: ...done
+
+Verifying transaction: ...done
+
+Executing transaction: ...done
+
+\#
+
+\# To activate this environment, use
+
+\#
+
+\#     $ conda activate iris
+
+--- 3.3  Activate it ---
+
+conda activate iris
+
+Your prompt should now show:
+
+(iris) C:\Users\<you>>
+
+--- 3.4  Upgrade base tooling ---
+
+python -m pip install --upgrade pip==24.0 setuptools==69.5.1 wheel==0.43.0
+
+--- 3.5  Install PyTorch + CUDA 12.1 runtime ---
+
+(this is the big ~5 GB step - be patient)
+
+pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 ^
+
+--index-url https://download.pytorch.org/whl/cu121
+
+On a single line (no caret) for PowerShell:
+
+pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu121
+
+--- 3.6  Install the rest of the scientific stack ---
+
+pip install numpy==1.26.4 scipy==1.13.1 matplotlib==3.8.4 pandas==2.2.2 ^
+
+pyyaml==6.0.1 ruamel.yaml==0.18.6 tqdm==4.66.4 ^
+
+ipykernel==6.29.4 jupyter\_client==8.6.2
+
+Single line version:
+
+pip install numpy==1.26.4 scipy==1.13.1 matplotlib==3.8.4 pandas==2.2.2 pyyaml==6.0.1 ruamel.yaml==0.18.6 tqdm==4.66.4 ipykernel==6.29.4 jupyter\_client==8.6.2
+
+--- 3.7  Register the Jupyter kernel for VS Code ---
+
+python -m ipykernel install --user --name=iris --display-name "Python (iris)"
+
+Expected:
+
+Installed kernelspec iris in C:\Users\<you>\AppData\Roaming\jupyter\kernels\iris
+
+--- 3.8  ALTERNATIVE: portable install from environment.yml ---
+
+conda env create -f setup\environment.yml
+
+Use this if you want a one-shot, spec-driven install. It pulls the
+
+same pinned versions listed above.
+
+
+\------------------------------------------------------------
+
+1. VERIFY THE SETUP
+
+\------------------------------------------------------------
+
+You have two ways to verify: a Python script and a Jupyter notebook.
+
+--- Option A: Script (recommended first run) ---
+
+conda activate iris
+
+cd "C:\Users\<you>\Documents\year 2\tri sem 4\sp\project"
+
+python setup\verify\_setup.py
+
+Expected tail:
+
+\============================================================
+
+SUMMARY
+
+\============================================================
+
+Passed: 30/30
+
+VERDICT: ALL GREEN -- READY FOR PHASE 0
+
+Exit code semantics:
+
+0 = all checks passed
+
+1. = passed with warnings (e.g., minor version drift)
+1. = fatal failure (CUDA unavailable, missing files, etc.)
+
+What it checks:
+
+1. Python is exactly 3.10.x
+1. All required packages import and match pinned versions
+1. torch.cuda.is\_available() is True
+1. GPU device name matches "RTX ..." family
+1. Compute capability >= (8, 6) for RTX 40-series
+1. GPU matmul (2048 x 2048) executes and syncs
+1. iris\_replication/ folder tree has all 9 subfolders
+1. All 20 placeholder files exist
+1. Core paper equations evaluate correctly:
+
+Eq. 12  Jain's Fairness Index
+
+Eq. 13  SAYS distribution pdf (Table 1 params)
+
+Eq. 14  L = 2^b
+
+Eq. 15  Delta = pi / 2^b
+
+Eq. 16  sigma\_eps^2 = Delta^2 / 12
+
+Eq. 17  G(b) small-M and large-M forms
+
+Eq. 18  gamma^(Q) = G(b) \* gamma
+
+1. Temp file write/read round-trip works
+
+--- Option B: Notebook ---
+
+Open setup/verify\_setup.ipynb in VS Code.
+
+1. Select the kernel (top-right corner): "Python (iris)"
+1. Run All (Ctrl+Shift+P -> "Notebook: Run All Cells")
+
+Every cell must run without raising. The notebook mirrors the script
+
+but displays intermediate values (Delta, G(b), SAYS pdf samples).
+
+
+\------------------------------------------------------------
+
+5\. SELECT THE KERNEL IN VS CODE
+
+\------------------------------------------------------------
+
+For .py files:
+
+1. Open any file inside iris\_replication/
+1. Ctrl+Shift+P -> "Python: Select Interpreter"
+1. Choose "Python 3.10.x ('iris')"
+
+For notebooks:
+
+1. Open setup/verify\_setup.ipynb
+1. Top-right kernel picker -> "Python (iris)"
+1. If it does not appear, run:
+
+Ctrl+Shift+P -> "Developer: Reload Window"
+
+
+\------------------------------------------------------------
+
+6\. VERIFY ENVIRONMENT SIZE
+
+\------------------------------------------------------------
+
+Run in PowerShell (NOT Anaconda Prompt, to avoid file locks):
+
+$envPath = "$env:USERPROFILE\miniconda3\envs\iris"
+
+if (-not (Test-Path $envPath)) {
+
+$envPath = "$env:USERPROFILE\anaconda3\envs\iris"
+
+}
+
+"{0:N2} GB" -f ((Get-ChildItem $envPath -Recurse -EA 0 |
+
+Measure-Object Length -Sum).Sum / 1GB)
+
+Expected: between 5.5 GB and 7.5 GB.
+
+If > 8 GB, something went wrong. Most likely a full CUDA toolkit was
+
+installed. Fix: conda env remove -n iris -y and redo Section 3.
+
+
+\------------------------------------------------------------
+
+7\. TROUBLESHOOTING
+
+\------------------------------------------------------------
+
+Symptom                                      Cause                    Fix
+
+\-------------------------------------------  -----------------------  ----------------------------------
+
+torch.cuda.is\_available() -> False           Driver < 525.60.13       Update NVIDIA driver
+
+"OSError: [WinError 126]" on torch import    Missing MSVC runtime     Install VC++ 2015-2022 x64:
+
+https://aka.ms/vs/17/release/vc\_redist.x64.exe
+
+"Kernel died" in notebook                    Wrong kernel selected    Select "Python (iris)"
+
+Env size > 10 GB                             Full CUDA toolkit        conda env remove -n iris -y
+
+installed                and redo Section 3
+
+pip install torch hangs                      Slow mirror              Add --timeout 120 --retries 5
+
+create\_project.bat "permission denied"       OneDrive sync lock       Move repo outside OneDrive,
+
+or pause sync
+
+"ModuleNotFoundError: yaml"                  pyyaml missing           pip install pyyaml==6.0.1
+
+torch and numpy incompatible                 numpy 2.x pulled in      pip install "numpy==1.26.4" --force-reinstall
+
+Jupyter kernel "iris" not listed             Kernel not registered    python -m ipykernel install
+
+--user --name=iris
+
+VS Code does not see the env                 Interpreter cache stale  Ctrl+Shift+P -> "Python: Select
+
+Interpreter" -> Enter interpreter path
+
+
+\------------------------------------------------------------
+
+8\. VERSION PIN RATIONALE
+
+\------------------------------------------------------------
+
+Package             Version       Reason
+
+\------------------  ------------  ---------------------------------------------
+
+torch               2.3.1+cu121   Matches CUDA 12.1; stable on RTX 40-series (Ada)
+
+torchvision         0.18.1+cu121  Locked to torch 2.3.1
+
+torchaudio          2.3.1+cu121   Locked to torch 2.3.1
+
+numpy               1.26.4        Last 1.x release; torch 2.3.1 does not support numpy 2.x
+
+scipy               1.13.1        curve\_fit + erfc behave identically to paper
+
+matplotlib          3.8.4         No contourf regressions affecting Fig. 7/8
+
+pandas              2.2.2         Stable CSV + DataFrame ops for eval logs
+
+pyyaml              6.0.1         Safe YAML loader used by configs/default.yaml
+
+ruamel.yaml         0.18.6        Round-trip YAML preservation if needed
+
+tqdm                4.66.4        Progress bars in train.py / evaluate.py
+
+ipykernel           6.29.4        Jupyter kernel registration for VS Code
+
+jupyter\_client      8.6.2         Compatible with ipykernel 6.29.4
+
+
+\------------------------------------------------------------
+
+9\. WHAT "GREEN" LOOKS LIKE
+
+\------------------------------------------------------------
+
+All of the following must be true before proceeding to PHASE 0:
+
+[ ] conda activate iris works and prompt shows (iris)
+
+[ ] python --version reports Python 3.10.x
+
+[ ] python -c "import torch; print(torch.\_\_version\_\_)" prints 2.3.1+cu121
+
+[ ] python -c "import torch; print(torch.cuda.is\_available())" prints True
+
+[ ] python -c "import torch; print(torch.cuda.get\_device\_name(0))" prints
+
+"NVIDIA GeForce RTX 4060 Laptop GPU" (or your actual GPU)
+
+[ ] setup\create\_project.bat ran without errors
+
+[ ] All 9 subfolders exist under iris\_replication/
+
+[ ] All 20 placeholder files exist under iris\_replication/
+
+[ ] python setup\verify\_setup.py exit code == 0
+
+[ ] Env size between 5.5 GB and 7.5 GB
+
+[ ] VS Code can select "Python (iris)" interpreter and kernel
+
+
+\------------------------------------------------------------
+
+10\. NEXT STEP
+
+\------------------------------------------------------------
+
+Once every box in Section 9 is checked:
+
+-> Proceed to PHASE 0 (Environment Sanity Check)
+
+PHASE 0 runs the following on the project itself:
+
+- Verifies ris\_env.py self-test
+- Verifies channel.py produces Rician fading
+- Verifies allocation.py matches Eq. 2 and Eq. 5
+- Prints a zero-error report
+
+Append your progress to:
+
+- iris\_replication/commands.txt   (raw commands)
+- iris\_replication/timeline.txt   (phase start/end)
+- iris\_replication/work done.txt  (narrative log)
+
+
+\============================================================
+
+END OF SETUP GUIDE
+
+\============================================================

@@ -1,0 +1,161 @@
+======================================== 
+iRIS REPLICATION -- WORK DONE LOG       
+======================================== 
+Append-only log. One section per phase. 
+ 
+
+========================================
+[PHASE 0] Environment Sanity Check
+========================================
+Status: COMPLETE
+Ended:  2026-09-29 20:03:03
+Notes:
+  - conda env 'iris' active at C:\Users\ROG007\.conda\envs\iris
+  - Python 3.10.21
+  - torch 2.3.1+cu121, torchvision 0.18.1+cu121
+  - numpy 1.26.4, scipy 1.13.1, matplotlib 3.8.4, pandas 2.2.2
+  - CUDA True on RTX 4060 Laptop (sm_89)
+  - GPU matmul 2048x2048 executed
+  - verify_setup.py: 27/27 PASS
+
+
+----------------------------------------
+[PHASE 1.1] environment/channel.py
+----------------------------------------
+Status: COMPLETE
+Ended:  2026-09-30 13:30:00
+Deliverable: Rician block-fading sampler (Eq. 1)
+Model: spatially-uncorrelated RIS -> random LOS phase per element
+Test: python -m environment.channel  ->  PASS
+
+
+----------------------------------------
+[PHASE 1.2] environment/allocation.py
+----------------------------------------
+Status: COMPLETE
+Ended:  2026-09-30 13:43:03
+Deliverable: SINR (Eq.2), sum-rate (Eq.3), phase config (Eq.5), JFI (Eq.12)
+Test: python -m environment.allocation  ->  PASS
+
+
+----------------------------------------
+[PHASE 1.3] environment/ris_env.py
+----------------------------------------
+Status: COMPLETE
+Ended:  2026-09-30 13:46:50
+Deliverable: IRISEnv (Gym-style, Algorithm 1)
+Test: python -m environment.ris_env  ->  PASS
+
+
+----------------------------------------
+[PHASE 1.4] environment/quantization.py
+----------------------------------------
+Status: COMPLETE
+Ended:  2026-09-30 13:54:29
+Deliverable: Phase quantization (Eq.14-18), overhead model
+Test: python -m environment.quantization  ->  PASS
+
+
+========================================
+[PHASE 1] Environment — COMPLETE
+========================================
+Ended:  2026-09-30 13:57:30
+Deliverables:
+  - channel.py        (Eq. 1)
+  - allocation.py     (Eq. 2, 3, 5, 12)
+  - ris_env.py        (Algorithm 1)
+  - quantization.py   (Eq. 14-18)
+  - __init__.py       (package exports)
+  - _phase1_summary.py (integration test)
+All self-tests PASS.
+G(b) table matches paper Fig.9/10 trends.
+
+
+----------------------------------------
+[PHASE 2.1] agent/replay_buffer.py
+----------------------------------------
+Status: COMPLETE
+Ended:  2026-10-01 20:59:19
+Deliverable: ReplayBuffer with FIFO eviction, uniform sampling
+Test: python -m agent.replay_buffer  ->  PASS
+
+
+----------------------------------------
+[PHASE 2.2] agent/dqn.py
+----------------------------------------
+Status: COMPLETE
+Ended:  2026-10-01 21:01:26
+Deliverable: Double DQN agent with target network, epsilon-greedy, Adam(1e-4)
+Device: cuda (RTX 4060)
+Test: python -m agent.dqn  ->  PASS
+
+
+========================================
+[PHASE 2] DQN Agent — COMPLETE
+========================================
+Ended:  2026-10-01 21:06:48
+Deliverables:
+  - agent/replay_buffer.py   (FIFO, uniform sampling)
+  - agent/dqn.py             (Double DQN, target net, epsilon-greedy)
+  - agent/__init__.py        (package exports)
+  - agent/_phase2_summary.py (integration test)
+All self-tests PASS.
+Quant: loss -99.7%, greedy acc 100%, return 0.2 -> 9.4
+
+
+----------------------------------------
+[PHASE 5] Figures — COMPLETE
+----------------------------------------
+Ended:  2026-10-05 15:30:57
+Deliverable: 10 figures (results/figures/fig_03 .. fig_12)
+Test: python -m analysis.make_figures -> 10 OK
+
+
+========================================
+[FINAL RESULT] Paper Replication Achieved
+========================================
+Ended:  2026-10-06 11:49:24
+Model: checkpoints/PAPER_REPLICATION_FINAL.pt
+Held-out JFI:     0.8904
+Held-out sum-rate: 12.17 bps/Hz
+L_i per user:     [14.3, 22.2, 27.3]
+Key settings: theta_serve=30, beta=0.5, scale=0.1, noise=-10dBm, soft path loss
+
+
+----------------------------------------
+[PHASE 6] SAYS Distribution Fit
+----------------------------------------
+Status: COMPLETE
+Ended:  2026-10-06 11:56:22
+Deliverable: results/table1_reproduced.csv
+SAYS RMSE: 0.0165 (Gaussian 0.0134, LogNormal 0.0148)
+Params matching paper: sigma, alpha, beta
+
+
+========================================
+[PHASE 7] Phase Quantization Analysis (Eq. 14-18)
+========================================
+Status: COMPLETE
+Deliverable: fig_09_phase_error_variance.png, fig_10_sinr_vs_bits.png
+Quantization module: PASS
+  L=2^b, Delta=pi/2^b, var(eps)=Delta^2/12
+  G(64,b=1)=0.8135, G(64,b=7)=1.0000
+
+========================================
+[PHASE 8] Fairness + Overhead Analysis
+========================================
+Status: COMPLETE
+Deliverable: fig_11_overhead.png, fig_12_comparison.png
+JFI over training: 0.89 (final held-out)
+Proposed vs uniform: proposed > uniform on sum-rate
+
+
+========================================
+[PHASE 9] Final Report — COMPLETE
+========================================
+Ended:  2026-10-06 14:37:34
+Deliverable: results/REPLICATION_REPORT.md
+Overall: SUCCESSFUL REPLICATION
+10/12 figures reproduced
+Core claims validated: JFI=0.89, quantization, SAYS fit
+

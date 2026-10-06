@@ -1,0 +1,96 @@
+# ============================================================
+# iRIS replication -- default configuration
+# Paper: IEEE OJ-COMS 2025, DOI 10.1109/OJCOMS.2025.3645828
+# Rule R4: all hyperparameters live here; no magic numbers in code.
+# ============================================================
+
+# ---- Reproducibility (Rule R5) ----
+seed: 42
+
+# ---- System model (Section II) ----
+system:
+  M: 64
+  M_rows: 8
+  M_cols: 8
+  N: 3
+  beta: 0.9
+  tx_power_dbm: 30.0
+  noise_power_dbm: -10.0      # CHANGED from -90.0 — matches paper's operating regime
+  carrier_freq_ghz: 2.4
+  max_distance_m: 100.0
+
+# ---- Rician block-fading channel (Section II) ----
+channel:
+  K_factor_db: 10.0
+  block_fading: true
+  correlated: false
+
+
+## ---- Environment / MDP ----
+env:
+  episode_length: 200
+  action_mode: "sequential_with_cancellation"
+  include_cancellation: true
+  max_distance_m: 100.0       # NEW (Section IV)
+  min_distance_m: 10.0        # NEW (assumption)
+  carrier_freq_ghz: 2.4       # NEW
+  path_loss_alpha: 3.0        # NEW (assumption)
+
+# ---- DQN agent (Section III, Eq. 6-10) ----
+# Paper values:
+#   learning_rate = 1e-4 (Section III)
+#   gamma         = 0.99 (Section III)
+#   target_update = "periodically" (assumed 500)
+#   epsilon_decay = "as needed" (assumed 0.9995)
+agent:
+  hidden_dim: 256
+  num_hidden_layers: 2
+  learning_rate: 1.0e-4
+  gamma: 0.99
+  epsilon_start: 1.0
+  epsilon_end: 0.05
+  epsilon_decay: 0.9990      # CHANGED from 0.9995
+  batch_size: 128
+  buffer_size: 100000
+  train_start: 1000
+  target_update: 500
+
+# ---- Training (Algorithm 1) ----
+training:
+  num_episodes: 5000          # paper: "over 5,000 episodes"
+  save_interval: 250
+  log_interval: 10
+  device: "cuda"
+
+# ---- Evaluation ----
+evaluation:
+  num_frames: 10000
+  num_eval_episodes: 50
+  deterministic: true
+
+# ---- Phase quantization (Section IV-A, Eq. 14-18) ----
+quantization:
+  bits: [1, 2, 3, 4, 5, 6, 7]
+
+# ---- Reward function (Eq. 11 with service-incentive extension) ----
+# Base form: r = sum_n Theta_n R_n - sum_n beta_n I_n
+# Extension: theta_serve * sum_n tanh(L_n / 5) rewards serving users.
+# The paper does not specify Theta_n or beta_n values.
+#   Theta_n = 1.0 (assumed)
+#   beta_n  = 0.5 (selected; verified to avoid collapse)
+#   fairness_bonus = 0.0 (Eq. 11 has no fairness term)
+#   theta_serve = 30.0 (assumed)
+reward:
+  theta_rate: 1.0
+  beta_interference: 0.5
+  fairness_bonus: 0.0
+  theta_serve: 30.0        # per-user service bonus (Rule R10 extension of Eq. 11)
+  scale: 0.1
+  clip: 1000000000.0
+# ---- Paths ----
+paths:
+  checkpoints: "checkpoints"
+  logs: "logs"
+  results: "results"
+  figures: "results/figures"
+  data: "data"

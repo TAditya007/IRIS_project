@@ -1,0 +1,2 @@
+# Deprecated: see setup/requirements.txt and setup/environment.yml
+# for the actual dependency list.

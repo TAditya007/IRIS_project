@@ -1,0 +1,14 @@
+timestamp: 20261006_112335
+num_episodes: 5000
+total_steps: 320000
+wall_time_s: 1439.11
+wall_time_hr: 0.3998
+final_epsilon: 0.05
+final_train_sum_rate: 17.044184
+final_train_jfi: 0.86949
+mean_train_sum_rate_last_50: 12.117123139999999
+mean_train_jfi_last_50: 0.87477152
+final_heldout_sum_rate: 12.189890002306088
+final_heldout_jfi: 0.8789932200147009
+checkpoint_final: C:\Users\ROG007\Documents\year 2\tri sem 4\sp\project\iris_replication\checkpoints\alg1_ckpt_final_20261006_112335.pt
+log_csv: C:\Users\ROG007\Documents\year 2\tri sem 4\sp\project\iris_replication\logs\train_alg1_log_20261006_112335.csv

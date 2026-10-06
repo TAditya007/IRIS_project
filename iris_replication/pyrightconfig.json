@@ -1,0 +1,7 @@
+{
+  "include": ["."],
+  "exclude": ["**/__pycache__", "**/.*"],
+  "reportOptionalSubscript": "none",
+  "reportArgumentType": "none",
+  "reportIndexIssue": "none"
+}
