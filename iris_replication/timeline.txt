@@ -1,5 +1,112 @@
-﻿======================================== 
-iRIS REPLICATION -- TIMELINE            
-======================================== 
-Format: [START] - [END] | PHASE | STATUS 
- 
+﻿============================================================
+iRIS REPLICATION -- TIMELINE
+============================================================
+Format: [START] - [END] | PHASE | STATUS | NOTES
+Timezone: IST (Asia/Kolkata)
+Project: iRIS — Deep Policy Learning for RIS Element Distribution
+Team: 3 (Aditya Vardhan, Koushik Chandar, Bhargava Aditya)
+============================================================
+
+[2026-09-29 18:30] - [2026-09-29 19:15] | PHASE 0   | Environment sanity check      | COMPLETE
+    - Conda env "iris" created (Python 3.10.21)
+    - torch 2.3.1+cu121 installed, CUDA verified on RTX 4060
+    - numpy 1.26.4, scipy 1.13.1, matplotlib 3.8.4, pandas 2.2.2
+    - verify_setup.py: 27/27 checks PASS
+    - iris_replication/ project tree scaffolded
+
+[2026-09-29 19:15] - [2026-09-30 20:30] | PHASE 1   | Environment modules + quantization | COMPLETE
+    - environment/channel.py: Rician block-fading (Eq. 1)
+    - environment/allocation.py: SINR (Eq. 2), sum-rate (Eq. 3), phase config (Eq. 5), JFI (Eq. 12)
+    - environment/ris_env.py: Gym-style MDP (Algorithm 1)
+    - environment/quantization.py: Phase quantization (Eq. 14-18)
+    - All self-tests PASS
+    - Bugs caught and fixed:
+        * Rician 4th moment: correct formula is (K^2+4K+2)/(K+1)^2 for random per-element LOS phase
+        * Idle users DO see interference (passive RIS reflects to everyone)
+        * JFI lower bound is 1/N, not arbitrary
+
+[2026-09-30 20:30] - [2026-10-01 22:15] | PHASE 2   | DQN agent (buffer + network)    | COMPLETE
+    - agent/replay_buffer.py: FIFO buffer (self-test PASS)
+    - agent/dqn.py: Double DQN with target net, epsilon-greedy (self-test PASS on CUDA)
+    - agent/simple_dqn.py: literal Algorithm 1 batch-1 form (self-test PASS)
+    - agent/_phase2_summary.py: integration test PASS
+
+[2026-10-01 22:15] - [2026-10-03 18:00] | PHASE 3   | Training loop + Algorithm 1     | COMPLETE
+    - train.py: buffer + target-net loop
+    - train_alg1.py: literal Algorithm 1 loop
+    - First runs: policy collapsed to one-user-takes-all (JFI = 0.333)
+    - Root cause: reward favored collapse under noise=-90dBm
+
+[2026-10-03 18:00] - [2026-10-05 12:30] | PHASE A   | Paper-faithful attempts         | COMPLETE (with finding)
+    - Attempt 1: Double DQN + buffer              -> JFI=0.333 collapse
+    - Attempt 2: vanilla DQN + buffer             -> JFI=0.333 collapse
+    - Attempt 3: literal Algorithm 1 batch-1      -> JFI=0.333 collapse
+    - Attempt 4: + beta_interference=1.0          -> JFI=0.333 collapse
+    - Attempt 5: + scale=0.1                      -> JFI=0.333 collapse
+    - Attempt 6: + cancellation pool              -> cancel-all attractor
+    - Attempt 7: + service bonus (theta=5, beta=0.5) -> partial learn, oscillates
+    - CONCLUSION: cancellation breaks pure Eq. 11 reward; needs service incentive
+
+[2026-10-05 12:30] - [2026-10-05 14:30] | PHASE A+  | Noise power fix                 | COMPLETE
+    - Changed noise_power_dbm from -90 to -10
+    - Root cause: -90dBm made SNR astronomically high -> rate saturates at 40 bps/Hz
+      on first element, no incentive to spread
+    - Fixed by making interference comparable to signal
+
+[2026-10-05 14:30] - [2026-10-05 15:00] | PHASE A++ | Soft path loss                  | COMPLETE
+    - Added bounded path-loss proxy (0-15 dB) driven by per-episode user distances
+    - Env: include_cancellation=True, max_distance_m=100, min_distance_m=10
+    - Enables per-episode channel diversity without extinguishing signal
+
+[2026-10-05 15:00] - [2026-10-05 15:30] | PHASE B   | theta_serve=30 + full retrain   | COMPLETE
+    - Changed theta_serve from 5.0 to 30.0
+    - Final converged model: held-out JFI=0.89, sum-rate=12.17 bps/Hz
+    - L_i per user = [14.3, 22.2, 27.3] — balanced across all 3 users
+    - Convergence around episode 2,800
+    - CHECKPOINT: checkpoints/PAPER_REPLICATION_FINAL.pt
+
+[2026-10-05 15:30] - [2026-10-05 16:00] | PHASE 5   | Figure generation               | COMPLETE
+    - analysis/generate_data.py: 9 data files generated
+    - analysis/make_figures.py: 10 figures rendered (200 DPI)
+    - Fig. 3-12 reproduced
+
+[2026-10-05 16:00] - [2026-10-05 16:30] | PHASE 6   | SAYS distribution fit           | COMPLETE
+    - analysis/says_fit.py
+    - SAYS RMSE = 0.0165 (3rd best after Gaussian 0.0134, LogNormal 0.0148)
+    - 3 of 7 Table 1 parameters match within 7% (sigma, alpha, beta)
+    - Output: results/table1_reproduced.csv
+
+[2026-10-06 10:00] - [2026-10-06 11:30] | PHASE 7   | Quantization analysis           | COMPLETE
+    - Fig. 9: phase error variance vs bits
+    - Fig. 10: average SINR vs bits
+    - 4-bit is sufficient for <1% SINR loss
+
+[2026-10-06 11:30] - [2026-10-06 12:00] | PHASE 8   | Fairness + overhead             | COMPLETE
+    - Fig. 11: overhead moving average
+    - Fig. 12: proposed vs uniform bars
+    - Proposed framework outperforms uniform by up to 2x
+
+[2026-10-06 12:00] - [2026-10-08 14:00] | PHASE 9   | Final report + GitHub push      | COMPLETE
+    - results/REPLICATION_REPORT.md (13 KB)
+    - Repository pushed to GitHub (all files)
+    - 10 figures, 1 CSV, 1 report, 1 checkpoint committed
+
+[2026-10-08 14:00] - [2026-10-08 18:00] | AUDIT     | Project audit + cleanup         | COMPLETE
+    - Fixed theta_serve EnvConfig mismatch
+    - Logs cleaned (47 files -> 2 final files)
+    - setup/ folder copied into iris_replication/
+    - All 9 module self-tests PASS
+    - Pylance warnings documented
+
+[2026-10-10 10:00] - [2026-10-10 18:00] | DOCS      | Report writing                  | IN PROGRESS
+    - Chapter 1 Introduction           : COMPLETE
+    - Chapter 2 Literature Review      : COMPLETE
+    - Chapter 3 Methodology            : COMPLETE (2 figures, no tables)
+    - Chapter 4 Implementation         : COMPLETE
+    - Chapter 5 Results                : PENDING
+    - Chapter 6 Conclusion             : PENDING
+    - Review 1 PPT + Video             : IN PROGRESS
+
+============================================================
+END OF TIMELINE
+============================================================

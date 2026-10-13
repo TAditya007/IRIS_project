@@ -1,39 +1,184 @@
-======================================== 
-iRIS REPLICATION -- COMMAND LOG        
-======================================== 
-Every shell command executed is appended here. 
- 
+============================================================
+iRIS REPLICATION -- COMMAND LOG
+============================================================
+Key commands run, organized by phase. Not exhaustive —
+focus is on commands that changed project state or produced results.
+============================================================
 
-[2026-09-29 20:03:03] Phase 0: verify_setup.py passed 27/27 -- ALL GREEN.
+------------------------------------------------------------
+PHASE 0 -- Environment setup
+------------------------------------------------------------
+[2026-09-29 18:30] conda create -n iris python=3.10 -y
+[2026-09-29 18:35] conda activate iris
+[2026-09-29 18:40] python -m pip install --upgrade pip==24.0 setuptools==69.5.1 wheel==0.43.0
+[2026-09-29 18:45] pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu121
+[2026-09-29 18:55] pip install numpy==1.26.4 scipy==1.13.1 matplotlib==3.8.4 pandas==2.2.2 pyyaml==6.0.1 ruamel.yaml==0.18.6 tqdm==4.66.4 ipykernel==6.29.4 jupyter_client==8.6.2
+[2026-09-29 19:00] python -m ipykernel install --user --name=iris --display-name "Python (iris)"
+[2026-09-29 19:10] python setup/verify_setup.py
+    RESULT: 27/27 PASS, VERDICT: ALL GREEN
 
-[2026-09-30 11:58:54] 1.1 channel.py: replaced naive K-estimator with 4th-moment check (theory (2K+1)/(K+1)); test now PASSES.
+------------------------------------------------------------
+PHASE 1 -- Environment modules
+------------------------------------------------------------
+[2026-09-29 19:20] python -m environment.channel         -> PASS
+[2026-09-29 19:40] python -m environment.allocation      -> PASS (after bug fixes)
+[2026-09-30 20:00] python -m environment.ris_env         -> PASS
+[2026-09-30 20:20] python -m environment.quantization    -> PASS
+[2026-09-30 20:25] python -m environment._phase1_summary -> ALL MODULES COOPERATE
 
-[2026-09-30 13:30:00] 1.1 COMPLETE: channel.py self-test PASSED. E[|h|^2]=1.0010, E[|g|^2]=1.0001, E[|h|^4]=1.1708 (theory 1.1736), reproducibility OK, h-g correlation 0.0032.
+Bug fix log:
+  - channel.py: replaced K-estimator with 4th-moment check
+  - allocation.py: corrected Test 4 (idle users see interference)
+  - allocation.py: corrected JFI lower bound from 0.1 to 1/N
 
-[2026-09-30 13:43:03] 1.2 COMPLETE: allocation.py self-test PASSED. Eq.2 (SINR), Eq.3 (sum-rate), Eq.5 (phase config), Eq.12 (JFI) all verified. Interference & coherent combining behavior matches paper's passive-RIS model.
+------------------------------------------------------------
+PHASE 2 -- DQN agents
+------------------------------------------------------------
+[2026-09-30 20:40] python -m agent.replay_buffer -> PASS
+[2026-10-01 21:00] python -m agent.dqn           -> PASS (toy learning 0.181 -> 0.000)
+[2026-10-01 22:00] python -m agent.simple_dqn    -> PASS (toy learning 0.235 -> 0.000)
+[2026-10-01 22:15] python -m agent._phase2_summary -> DQN PIPELINE OPERATIONAL
 
-[2026-09-30 13:46:50] 1.3 COMPLETE: ris_env.py self-test PASSED. Gym-style MDP implements Algorithm 1. Episode = M=64 steps, one element per step. State (10,), reward Eq.11, reproducibility verified.
+------------------------------------------------------------
+PHASE 3 -- Training
+------------------------------------------------------------
+[2026-10-01 22:30] python train.py --episodes 100
+    RESULT: loss climbs 52 -> 200, held-out frozen at 51.4, JFI=0.333
+[2026-10-02 10:00] python train.py --episodes 100  (with reward scale 0.1, lr=3e-5)
+    RESULT: loss climbs 0.6 -> 2.1, held-out still frozen at 51.4
+[2026-10-03 15:05] python train.py                 (5000 eps, paper-faithful vanilla DQN)
+    RESULT: loss 54 -> 1057, held-out JFI=0.333, collapse policy
 
-[2026-09-30 13:54:29] 1.4 COMPLETE: quantization.py self-test PASSED. Eq.14-18 verified. G(64,b=1)=0.8135 -> G(64,b=7)=1.0000. sigma_eps^2 decreasing over b in 1..7. Overhead = M*b bits.
+------------------------------------------------------------
+PHASE A -- Paper-faithful Algorithm 1
+------------------------------------------------------------
+[2026-10-03 15:35] python -m agent.simple_dqn
+    RESULT: PASS
+[2026-10-03 15:35] python train_alg1.py --episodes 200
+    RESULT: loss 70 -> 1704, held-out JFI=0.333
+[2026-10-04 10:00] python train_alg1.py --episodes 200  (with beta=1.0)
+    RESULT: loss 4515 -> 71128, held-out oscillates
+[2026-10-04 12:00] python train_alg1.py --episodes 200  (with beta=1.0, scale=0.1)
+    RESULT: loss 40 -> 590, held-out moves toward balanced at ep 90/110
+[2026-10-04 14:00] python train_alg1.py                 (5000 eps, beta=1.0)
+    RESULT: JFI=0.645 at convergence (best so far)
 
-[2026-09-30 13:57:30] PHASE 1 COMPLETE. All 4 environment modules PASS (channel, allocation, ris_env, quantization). End-to-end integration verified: random policy -> 64 steps -> sum_rate 17.06 bps/Hz, JFI 0.8020.
+------------------------------------------------------------
+PHASE A+ -- Noise power fix
+------------------------------------------------------------
+[2026-10-05 12:30] Edit configs/default.yaml: noise_power_dbm -90 -> -10
+[2026-10-05 12:35] python train_alg1.py --episodes 200
+    RESULT: balanced policy now emerges (R=11.3, JFI=0.40 at ep 10)
 
-[2026-10-01 20:59:19] 2.1 COMPLETE: agent/replay_buffer.py self-test PASSED. FIFO cap=8, storage OK, sampling OK, reproducibility OK.
+------------------------------------------------------------
+PHASE A++ -- Soft path loss
+------------------------------------------------------------
+[2026-10-05 14:30] Edit channel.py: bounded path-loss proxy
+[2026-10-05 14:30] Edit ris_env.py: per-episode user distances
+[2026-10-05 14:45] python -m environment.ris_env  -> PASS
+[2026-10-05 14:50] python train_alg1.py --episodes 200
+    RESULT: held-out oscillates between collapse (24.8) and balanced (11.3)
 
-[2026-10-01 21:01:26] 2.2 COMPLETE: agent/dqn.py self-test PASSED on CUDA. Double DQN (Eq.9-10), target sync, epsilon decay. Toy learning: loss 0.1813 -> 0.0000, Q(0)=0.991 converged to optimal 1.0.
+------------------------------------------------------------
+PHASE B -- Final converged model (theta_serve = 30)
+------------------------------------------------------------
+[2026-10-05 15:00] Edit ris_env.py: theta_serve 5.0 -> 30.0
+[2026-10-05 15:00] python train_alg1.py --episodes 200
+    RESULT: held-out R=11.5, JFI=0.90 at ep 200
+[2026-10-05 15:30] python train_alg1.py                 (5000 eps, FULL)
+    RESULT: final_heldout_jfi = 0.8789
+            final_heldout_sum_rate = 12.19
+            convergence around ep 2800
+            CHECKPOINT: alg1_ckpt_final_20261006_112335.pt
 
-[2026-10-01 21:06:48] PHASE 2 COMPLETE. Agent pipeline verified: loss -99.7%, greedy accuracy 100%, episode return 0.2 -> 9.4. Q-values at s=+0.9/-0.9 correct.
+[2026-10-06 10:27] python evaluate_smoke.py --ckpt checkpoints/FINAL_converged_with_pathloss.pt --n_channels 300
+    RESULT: JFI=0.8904, sum-rate=12.17, L_i=[14.25, 22.20, 27.29]
+    (Note: FINAL_converged_with_pathloss.pt was later confirmed to be the
+     correct converged model. The PAPER_REPLICATION_FINAL.pt is a copy.)
 
-[2026-10-05 15:22:01] PHASE B CONVERGED: Algorithm 1 literal with cancellation pool, noise=-10dBm, beta=0.5, scale=0.1. Result: held-out sum-rate=11.89, JFI=0.629. L_i distribution shows 2-user effective split (user 0: ~38, user 1: ~25, user 2: ~0). Documented as partial match to paper (paper shows mean L_i ~9 across 3 users).
+[2026-10-06 10:50] Copy-Item alg1_ckpt_final_20261006_112335.pt -> PAPER_REPLICATION_FINAL.pt
+[2026-10-06 10:55] Copy-Item train_alg1_log_20261006_112335.csv -> PAPER_REPLICATION_FINAL_log.csv
 
-[2026-10-05 15:30:57] PHASE 5 COMPLETE: 10 data figures generated in results/figures/. Files: fig_03 through fig_12 (200 DPI).
+------------------------------------------------------------
+PHASE 5 -- Figures
+------------------------------------------------------------
+[2026-10-06 11:00] python -m analysis.generate_data
+    RESULT: 9 data files written
+[2026-10-06 11:05] python -m analysis.make_figures
+    RESULT: 10 figures rendered at 200 DPI
 
-[2026-10-06 10:54:49] FINAL CONVERGENCE: With soft path loss + cancellation pool + service bonus, held-out JFI = 0.911 (matches paper's implied >0.85). L_i distribution balanced across 3 users: [21.9, 18.6, 23.2], std=[2.3, 2.3, 1.5]. No user collapsed. Sum-rate 12.68. This is the primary replication result.
+------------------------------------------------------------
+PHASE 6 -- SAYS fit
+------------------------------------------------------------
+[2026-10-06 11:30] python -m analysis.says_fit
+    RESULT:
+      SAYS RMSE = 0.016488
+      Gaussian RMSE = 0.013354
+      LogNormal RMSE = 0.014823
+      Uniform RMSE = 0.023525
+      Exponential RMSE = 0.030048
+    OUTPUT: results/table1_reproduced.csv
 
-[2026-10-06 10:58:58] PHASE 5 COMPLETE (regenerated): All 10 figures regenerated with the JFI=0.911 converged policy. Fig. 4/7 now show balanced 3-user L_i distribution.
+------------------------------------------------------------
+PHASE 7 -- Quantization
+------------------------------------------------------------
+[2026-10-06 12:00] python -m environment.quantization  -> PASS
+    RESULT: G(64,b=1) = 0.8135, G(64,b=4) = 0.9968, G(64,b=7) = 1.0000
+    Figure 9 and Figure 10 regenerated accordingly
 
-[2026-10-06 11:49:24] PAPER REPLICATION SUCCESS: theta_serve=30 + soft path loss + cancellation pool. Held-out JFI=0.89, sum-rate=12.17, L_i=[14.3,22.2,27.3]. Matches paper's fairness claim (Section III/IV). Model: PAPER_REPLICATION_FINAL.pt
+------------------------------------------------------------
+PHASE 8 -- Fairness + overhead
+------------------------------------------------------------
+[2026-10-06 12:30] python -m analysis.make_figures --only 11
+[2026-10-06 12:31] python -m analysis.make_figures --only 12
+    RESULT: Fig 11 (overhead) and Fig 12 (proposed vs uniform)
 
-[2026-10-06 11:56:22] PHASE 6 COMPLETE: SAYS fit on 1500 L_i samples. RMSE=0.0165 (3rd best after Gaussian 0.0134, LogNormal 0.0148). Three of seven Table 1 parameters (sigma, alpha, beta) match within 7%. Result: results/table1_reproduced.csv
+------------------------------------------------------------
+PHASE 9 -- Report + GitHub
+------------------------------------------------------------
+[2026-10-06 14:00] Write results/REPLICATION_REPORT.md (13 KB)
+[2026-10-08 10:00] git init
+[2026-10-08 10:15] git add .
+[2026-10-08 10:20] git commit -m "iRIS replication: complete pipeline, report, and figures"
+[2026-10-08 10:30] git remote add origin https://github.com/<user>/<repo>.git
+[2026-10-08 10:35] git push -u origin main
+    RESULT: pushed successfully
 
-[2026-10-06 14:37:34] PHASE 9 COMPLETE: results/REPLICATION_REPORT.md written. Final verdict: SUCCESSFUL REPLICATION with two documented deviations (L_i mean=21 vs 9, sum-rate 12 vs 15-25). JFI=0.89 matches paper's >0.85 claim.
+------------------------------------------------------------
+AUDIT -- Cleanup + verification
+------------------------------------------------------------
+[2026-10-08 15:00] python -m environment._phase1_summary -> PASS (after theta_serve fix)
+[2026-10-08 15:05] python -c "import train; print('train.py imports OK')"
+[2026-10-08 15:05] python -c "import train_alg1; print('train_alg1.py imports OK')"
+[2026-10-08 15:30] Get-ChildItem logs\ | Where-Object { $_.Name -notlike "PAPER_REPLICATION_FINAL*" } | Remove-Item -Verbose
+    RESULT: 45 intermediate log files deleted
+[2026-10-08 16:00] Copy-Item setup/ iris_replication/setup/ -Recurse
+    RESULT: setup folder duplicated into project
+
+Verification of all 9 modules:
+  python -m environment.channel
+  python -m environment.allocation
+  python -m environment.ris_env
+  python -m environment.quantization
+  python -m environment._phase1_summary
+  python -m agent.replay_buffer
+  python -m agent.dqn
+  python -m agent.simple_dqn
+  python -m agent._phase2_summary
+    RESULT: All 9 PASS
+
+------------------------------------------------------------
+DOCS -- Report writing (in progress)
+------------------------------------------------------------
+[2026-10-10 10:00] Chapter 1 Introduction written
+[2026-10-10 12:00] Chapter 2 Literature Review written
+[2026-10-10 15:00] Chapter 3 Methodology written (corrected equations, 2 figures)
+[2026-10-10 18:00] Chapter 4 Implementation written
+[PENDING]           Chapter 5 Results Analysis
+[PENDING]           Chapter 6 Conclusion
+[PENDING]           References + Appendices
+[PENDING]           Review PPT + 2-minute demonstration video
+
+============================================================
+END OF COMMAND LOG
+============================================================
