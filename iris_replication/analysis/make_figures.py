@@ -80,7 +80,7 @@ def fig3():
     for ax in axes:
         ax.set_xlabel("Column index")
     axes[1].legend(loc="upper right", fontsize=9)
-    fig.suptitle("Fig. 3 reproduction: RIS element allocation "
+    fig.suptitle("Fig. 3: RIS element allocation "
                  "on an 8×8 grid (two consecutive frames)")
     save(fig, "fig_03_allocations.png")
 
@@ -100,7 +100,7 @@ def fig4():
                 edgecolor="black", linewidth=0.5)
     ax.set_xlabel("RIS Allocations")
     ax.set_ylabel("Density")
-    ax.set_title(f"Fig. 4 reproduction: normalized distribution of "
+    ax.set_title(f"Fig. 4: normalized distribution of "
                  f"RIS elements per user (N={N})")
     ax.legend()
     save(fig, "fig_04_L_i_histogram_N3.png")
@@ -121,7 +121,7 @@ def fig5():
                 edgecolor="black", linewidth=0.5)
     ax.set_xlabel("RIS Allocations")
     ax.set_ylabel("Density")
-    ax.set_title(f"Fig. 5 reproduction: normalized distribution of "
+    ax.set_title(f"Fig. 5: normalized distribution of "
                  f"RIS elements per user (N={N})")
     ax.legend()
     save(fig, "fig_05_L_i_histogram_N4.png")
@@ -150,7 +150,7 @@ def fig6():
             label="3×mean per-user rate (raw)")
     ax.set_xlabel("Episode")
     ax.set_ylabel("Data rate (bps/Hz)")
-    ax.set_title("Fig. 6 reproduction: sum-rate and per-user "
+    ax.set_title("Fig. 6: sum-rate and per-user "
                  "data rate vs episode")
     ax.legend(loc="lower right", fontsize=9)
     save(fig, "fig_06_training_curve.png")
@@ -214,7 +214,7 @@ def fig7():
     ax.set_xlabel("RIS Elements Allocated")
     ax.set_ylabel("Density")
     ax.set_xlim(0, min(empirical.max() + 1, 60))
-    ax.set_title("Fig. 7 reproduction: empirical vs theoretical "
+    ax.set_title("Fig. 7: empirical vs theoretical "
                  "distributions")
     ax.legend(fontsize=8)
     save(fig, "fig_07_distribution_fit.png")
@@ -245,7 +245,7 @@ def fig8():
     ax.set_xlabel("RIS Allocations")
     ax.set_ylabel("Density")
     ax.set_xlim(0, 12)
-    ax.set_title("Fig. 8 reproduction: SAYS distribution under "
+    ax.set_title("Fig. 8 : SAYS distribution under "
                  "different channel conditions")
     ax.legend(fontsize=8)
     save(fig, "fig_08_says_conditions.png")
@@ -265,7 +265,7 @@ def fig9():
     ax.set_xlabel("Quantization bits (b)")
     ax.set_ylabel("Phase error variance $\\sigma_\\epsilon^2$")
     ax.set_xticks(bits)
-    ax.set_title("Fig. 9 reproduction: phase error variance vs "
+    ax.set_title("Fig. 9 : phase error variance vs "
                  "quantization bits")
     ax.grid(True, which="both", alpha=0.3)
     save(fig, "fig_09_phase_error_variance.png")
@@ -288,7 +288,7 @@ def fig10():
     ax.set_xlabel("Quantization bits (b)")
     ax.set_ylabel("Average SINR/SIQNR (dB)")
     ax.set_xticks(bits)
-    ax.set_title("Fig. 10 reproduction: average SINR vs "
+    ax.set_title("Fig.: average SINR vs "
                  "quantization bits")
     ax.legend()
     save(fig, "fig_10_sinr_vs_bits.png")
@@ -312,7 +312,7 @@ def fig11():
             label="Smoothed Overhead")
     ax.set_xlabel("Episode Index")
     ax.set_ylabel("Overhead (Moving Average)")
-    ax.set_title("Fig. 11 reproduction: overhead analysis")
+    ax.set_title("Fig. 11: overhead analysis")
     ax.legend()
     save(fig, "fig_11_overhead.png")
 
@@ -336,7 +336,7 @@ def fig12():
     ax.set_xticks(x)
     ax.set_xticklabels([f"User {i+1}" for i in range(N)])
     ax.set_ylabel("Data Rate ($\\times 10^8$ bps)")
-    ax.set_title("Fig. 12 reproduction: performance comparison "
+    ax.set_title("Fig. 12: performance comparison "
                  "with uniform allocation")
     ax.legend()
     save(fig, "fig_12_comparison.png")
